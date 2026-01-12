@@ -1,0 +1,1369 @@
+"use client";
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Phone,
+  Mail,
+  Home,
+  Building2,
+  ShieldCheck,
+  Calculator,
+  CheckCircle2,
+  Star,
+  MapPin,
+  ExternalLink,
+  BadgeCheck,
+} from "lucide-react";
+
+// Brand tokens
+const colors = {
+  primary: "#0B3D91", // navy
+  accent: "#082C5C", // deep navy
+  bg: "#F2F6FF", // light tint
+};
+
+const APPLY_URL =
+  "https://181106.my1003app.com/1998387/register?time=1721681398525";
+const INQUIRY_URL =
+  "https://181106.my1003app.com/1998387/inquiry?time=1725987208470";
+const ZILLOW_PROFILE_URL = "https://www.zillow.com/profile/Joe%20Leslie";
+
+// Elfsight embed for Zillow reviews
+const ELFSIGHT_WIDGET_DIV =
+  '<div class="elfsight-app-c67759cc-4860-461d-a2c7-689b09adffb7" data-elfsight-app-lazy></div>';
+const ELFSIGHT_SCRIPT_SRC = "https://elfsightcdn.com/platform.js";
+
+// Manual display values (safe defaults if the widget doesn't expose these)
+const ZILLOW_RATING_AVG = 4.9;
+const ZILLOW_REVIEW_COUNT = 137;
+
+type Page = "home" | "va";
+
+function go(page: Page) {
+  // Hash routing so it also works if you ever export static
+  if (page === "va") window.location.hash = "va";
+  else window.location.hash = "";
+}
+
+function currentPageFromHash(): Page {
+  const h = (typeof window !== "undefined" ? window.location.hash : "") || "";
+  return h.replace("#", "").toLowerCase() === "va" ? "va" : "home";
+}
+
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs font-semibold tracking-wide text-slate-600">
+      {children}
+    </span>
+  );
+}
+
+function ProgramCard({
+  icon: Icon,
+  title,
+  points,
+  color = colors.primary,
+  tint,
+}: {
+  icon: any;
+  title: string;
+  points: string[];
+  color?: string;
+  tint?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.35 }}
+      className="group h-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md"
+    >
+      <div className="flex items-center gap-3">
+        <div className="rounded-xl p-2" style={{ background: tint || colors.bg }}>
+          <Icon className="h-6 w-6" style={{ color }} />
+        </div>
+        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+      </div>
+      <ul className="mt-4 space-y-2 text-sm text-slate-700">
+        {points.map((p, idx) => (
+          <li key={idx} className="flex items-start gap-2">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color }} />
+            <span>{p}</span>
+          </li>
+        ))}
+      </ul>
+    </motion.div>
+  );
+}
+
+function Step({ n, title, text }: { n: string; title: string; text: string }) {
+  return (
+    <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div
+        className="absolute -top-3 left-6 rounded-full px-3 py-1 text-xs font-bold text-white"
+        style={{ background: colors.accent }}
+      >
+        STEP {n}
+      </div>
+      <h4 className="mt-2 text-base font-semibold text-slate-900">{title}</h4>
+      <p className="mt-2 text-sm text-slate-700">{text}</p>
+    </div>
+  );
+}
+
+function TeamCard({
+  name,
+  role,
+  img,
+  phone,
+  email,
+}: {
+  name: string;
+  role: string;
+  img: string;
+  phone: string;
+  email: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.35 }}
+      className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+    >
+      <img src={img} alt={name} className="h-44 w-full rounded-xl object-cover" />
+      <div className="mt-4">
+        <h4 className="text-base font-semibold text-slate-900">{name}</h4>
+        <p className="text-sm text-slate-600">{role}</p>
+        <div className="mt-3 space-y-1 text-sm">
+          <a
+            href={`tel:${phone.replace(/[^0-9+]/g, "")}`}
+            className="flex items-center gap-2 text-slate-700 hover:text-slate-900"
+          >
+            <Phone className="h-4 w-4" style={{ color: "#0EA5E9" }} />
+            {phone}
+          </a>
+          <a
+            href={`mailto:${email}`}
+            className="flex items-center gap-2 text-slate-700 hover:text-slate-900"
+          >
+            <Mail className="h-4 w-4" style={{ color: "#7C3AED" }} />
+            {email}
+          </a>
+        </div>
+        <div className="mt-4">
+          <a
+            href={APPLY_URL}
+            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-white"
+            style={{ background: colors.primary }}
+          >
+            Apply Now <ArrowRight className="h-4 w-4" />
+          </a>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function ContactForm() {
+  const [sent, setSent] = useState(false);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    // Option A (as discussed): show a confirmation state. We can wire this to email/CRM once you tell me the target.
+    setSent(true);
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      {sent ? (
+        <div className="text-center">
+          <h4 className="text-lg font-semibold text-slate-900">Thanks! 🎉</h4>
+          <p className="mt-1 text-sm text-slate-700">
+            We’ll reach out shortly. If it’s urgent, click Apply Now for priority
+            intake.
+          </p>
+          <a
+            href={APPLY_URL}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 font-semibold text-white"
+            style={{ background: colors.primary }}
+          >
+            Apply Now <ArrowRight className="h-4 w-4" />
+          </a>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                First name
+              </label>
+              <input
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2"
+                required
+                name="firstName"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Last name
+              </label>
+              <input
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2"
+                required
+                name="lastName"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Email
+              </label>
+              <input
+                type="email"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2"
+                required
+                name="email"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Phone
+              </label>
+              <input
+                type="tel"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2"
+                name="phone"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              How can we help?
+            </label>
+            <textarea
+              rows={4}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2"
+              placeholder="Pre-approval, purchase, refinance, self-employed, VA, FHA, DSCR, ITIN, etc."
+              name="message"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 font-semibold text-white"
+              style={{ background: colors.primary }}
+            >
+              Send Message <ArrowRight className="h-4 w-4" />
+            </button>
+            <a
+              href={APPLY_URL}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-900"
+            >
+              Apply Now
+            </a>
+          </div>
+          <p className="text-xs text-slate-500">
+            By submitting, you agree to be contacted by phone, text, or email.
+            This is not a commitment to lend. All loans subject to credit
+            approval.
+          </p>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function calcMonthlyPI(loanAmount: number, annualRatePct: number, years: number) {
+  const n = Math.max(0, Math.round(years * 12));
+  if (!loanAmount || !n) return 0;
+  const monthlyRate = annualRatePct / 100 / 12;
+  if (monthlyRate === 0) return loanAmount / n;
+  const denom = 1 - Math.pow(1 + monthlyRate, -n);
+  if (denom === 0) return 0;
+  return (loanAmount * monthlyRate) / denom;
+}
+
+function formatMoney0(x: number) {
+  return (x || 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+function PurchaseCalculator() {
+  const [price, setPrice] = useState(600000);
+  const [downPct, setDownPct] = useState(20);
+  const [rate, setRate] = useState(6.5);
+  const [years, setYears] = useState(30);
+
+  const loanAmount = useMemo(() => {
+    const p = Number(price || 0);
+    const d = Number(downPct || 0) / 100;
+    return Math.max(0, p * (1 - d));
+  }, [price, downPct]);
+
+  const monthlyPI = useMemo(() => {
+    return calcMonthlyPI(loanAmount, Number(rate || 0), Number(years || 0));
+  }, [loanAmount, rate, years]);
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="rounded-xl p-2" style={{ background: "rgba(8, 47, 73, 0.08)" }}>
+          <Calculator className="h-6 w-6" style={{ color: colors.primary }} />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">Quick Payment Estimate</h3>
+          <p className="text-xs text-slate-600">
+            Principal &amp; interest only – taxes, insurance, and MI are not included.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-700">Home price</label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">$</span>
+              <input
+                type="number"
+                className="w-full rounded-xl border border-slate-300 bg-white px-6 py-2 text-sm outline-none focus:ring-2"
+                value={price}
+                onChange={(e) => setPrice(Number(e.target.value))}
+                min={0}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-700">Down payment %</label>
+            <div className="relative">
+              <input
+                type="number"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2"
+                value={downPct}
+                onChange={(e) => setDownPct(Number(e.target.value))}
+                min={0}
+                max={100}
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Rate %</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2"
+                  value={rate}
+                  onChange={(e) => setRate(Number(e.target.value))}
+                  min={0}
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Term (years)</label>
+              <input
+                type="number"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2"
+                value={years}
+                onChange={(e) => setYears(Number(e.target.value))}
+                min={1}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-2xl bg-slate-50 p-4 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600">Estimated loan amount</span>
+            <span className="font-semibold text-slate-900">${formatMoney0(loanAmount)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600">Est. principal &amp; interest</span>
+            <span className="text-lg font-semibold text-slate-900">${formatMoney0(monthlyPI)}/mo</span>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            This calculator is for illustration only and doesn’t include taxes, insurance, HOA dues, or mortgage insurance.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a
+              href={INQUIRY_URL}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900"
+            >
+              Request custom scenario <ArrowRight className="h-3 w-3" />
+            </a>
+            <a
+              href={APPLY_URL}
+              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-white"
+              style={{ background: colors.primary }}
+            >
+              Start full application
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RefiCalculator({ defaultRate = 5.625 }: { defaultRate?: number }) {
+  const [balance, setBalance] = useState(420000);
+  const [years, setYears] = useState(30);
+  const [rate, setRate] = useState<number>(defaultRate);
+
+  useEffect(() => {
+    setRate(defaultRate);
+  }, [defaultRate]);
+
+  const monthlyPI = useMemo(() => {
+    return calcMonthlyPI(Number(balance || 0), Number(rate || 0), Number(years || 0));
+  }, [balance, rate, years]);
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="rounded-xl p-2" style={{ background: "rgba(11, 61, 145, 0.10)" }}>
+          <Calculator className="h-6 w-6" style={{ color: colors.primary }} />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">Refinance Payment Estimate</h3>
+          <p className="text-xs text-slate-600">Principal &amp; interest only.</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-700">Current loan balance</label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">$</span>
+              <input
+                type="number"
+                className="w-full rounded-xl border border-slate-300 bg-white px-6 py-2 text-sm outline-none focus:ring-2"
+                value={balance}
+                onChange={(e) => setBalance(Number(e.target.value))}
+                min={0}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Rate %</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.001"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2"
+                  value={rate}
+                  onChange={(e) => setRate(Number(e.target.value))}
+                  min={0}
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">New term (years)</label>
+              <input
+                type="number"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2"
+                value={years}
+                onChange={(e) => setYears(Number(e.target.value))}
+                min={1}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-600">Rate used</span>
+              <span className="font-semibold text-slate-900">{rate.toFixed(3)}%</span>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Marketing estimate only. Final rate, payment, and APR depend on credit, loan size, equity, program, and underwriting factors.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-2xl bg-slate-50 p-4 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600">Loan amount</span>
+            <span className="font-semibold text-slate-900">${formatMoney0(balance)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600">Est. principal &amp; interest</span>
+            <span className="text-lg font-semibold text-slate-900">${formatMoney0(monthlyPI)}/mo</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a
+              href={INQUIRY_URL}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900"
+            >
+              Request scenario <ArrowRight className="h-3 w-3" />
+            </a>
+            <a
+              href={APPLY_URL}
+              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-white"
+              style={{ background: colors.primary }}
+            >
+              Apply Now
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SliderShell({ children, cardWidth }: { children: React.ReactNode; cardWidth: number }) {
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const GUTTER = 16;
+
+  const scroll = (dir: number) => {
+    if (!trackRef.current) return;
+    trackRef.current.scrollBy({
+      left: dir * (cardWidth + GUTTER) * 1.5,
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <div className="relative">
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-white to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white to-transparent" />
+
+      <div ref={trackRef} className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-1">
+        {children}
+      </div>
+
+      <div className="pointer-events-none absolute -left-2 top-1/2 hidden -translate-y-1/2 md:block">
+        <button
+          onClick={() => scroll(-1)}
+          className="pointer-events-auto rounded-full border border-slate-200 bg-white p-2 shadow-sm hover:shadow"
+          aria-label="Previous"
+        >
+          <ArrowRight className="h-5 w-5 rotate-180" />
+        </button>
+      </div>
+      <div className="pointer-events-none absolute -right-2 top-1/2 hidden -translate-y-1/2 md:block">
+        <button
+          onClick={() => scroll(1)}
+          className="pointer-events-auto rounded-full border border-slate-200 bg-white p-2 shadow-sm hover:shadow"
+          aria-label="Next"
+        >
+          <ArrowRight className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TeamSlider() {
+  const CARD_WIDTH = 320;
+
+  return (
+    <SliderShell cardWidth={CARD_WIDTH}>
+      {[
+        {
+          name: "Joe Leslie",
+          role: "Mortgage Loan Originator",
+          img: "https://images.unsplash.com/photo-1603415526960-f7e0328c63b1?q=80&w=1280&auto=format&fit=crop",
+          phone: "(425) 750-1731",
+          email: "jleslie@barrettfinancial.com",
+        },
+        {
+          name: "JD Thueringer",
+          role: "Loan Officer",
+          img: "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?q=80&w=1280&auto=format&fit=crop",
+          phone: "(425) 555-0201",
+          email: "jd@g4mortgage.com",
+        },
+        {
+          name: "Jack Sullivan",
+          role: "Loan Officer",
+          img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1280&auto=format&fit=crop",
+          phone: "(425) 555-0202",
+          email: "jack@g4mortgage.com",
+        },
+        {
+          name: "Monica Alfieri",
+          role: "Client Experience",
+          img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1280&auto=format&fit=crop",
+          phone: "(425) 555-0203",
+          email: "monica@g4mortgage.com",
+        },
+        {
+          name: "Matt Clark",
+          role: "Loan Partner · Processing",
+          img: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=1280&auto=format&fit=crop",
+          phone: "(425) 555-0204",
+          email: "matt@g4mortgage.com",
+        },
+        {
+          name: "Krystal Biehn",
+          role: "Loan Officer",
+          img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2c?q=80&w=1280&auto=format&fit=crop",
+          phone: "(425) 555-0205",
+          email: "krystal@g4mortgage.com",
+        },
+      ].map((t) => (
+        <div key={t.name} className="snap-start shrink-0" style={{ minWidth: CARD_WIDTH }}>
+          <TeamCard {...t} />
+        </div>
+      ))}
+    </SliderShell>
+  );
+}
+
+function ProgramSlider() {
+  const CARD_MIN_WIDTH = 340;
+
+  const programs = [
+    {
+      icon: Home,
+      title: "Conventional 3%+ down",
+      points: ["Great for strong credit", "Low MI options", "Fixed & ARMs"],
+      color: "#0B3D91",
+      tint: "rgba(11, 61, 145, 0.10)",
+    },
+    {
+      icon: ShieldCheck,
+      title: "FHA 3.5% down",
+      points: ["Flexible credit & DTI", "Assumable loans", "Streamline refi"],
+      color: "#16A34A",
+      tint: "rgba(22, 163, 74, 0.10)",
+    },
+    {
+      icon: ShieldCheck,
+      title: "VA 0% down",
+      points: ["No MI", "Flexible guidelines", "Assumable"],
+      color: "#0EA5E9",
+      tint: "rgba(14, 165, 233, 0.10)",
+    },
+    {
+      icon: Building2,
+      title: "USDA 0% down",
+      points: ["Rural properties", "Income caps", "Great for first-time buyers"],
+      color: "#22C55E",
+      tint: "rgba(34, 197, 94, 0.10)",
+    },
+    {
+      icon: Building2,
+      title: "Jumbo",
+      points: ["High loan amounts", "Competitive pricing", "Alt-doc options"],
+      color: "#7C3AED",
+      tint: "rgba(124, 58, 237, 0.10)",
+    },
+    {
+      icon: Home,
+      title: "Investor / DSCR",
+      points: ["Qualify on rent", "Short & long-term rentals", "LLC-friendly"],
+      color: "#F59E0B",
+      tint: "rgba(245, 158, 11, 0.10)",
+    },
+    {
+      icon: Home,
+      title: "Bank Statement",
+      points: ["12–24 mo statements", "Self-employed friendly", "No tax returns in many cases"],
+      color: "#0D9488",
+      tint: "rgba(13, 148, 136, 0.10)",
+    },
+    {
+      icon: Home,
+      title: "ITIN",
+      points: ["Flexible documentation", "Purchase & refi", "Fixed & ARM options"],
+      color: "#E11D48",
+      tint: "rgba(225, 29, 72, 0.10)",
+    },
+    {
+      icon: Home,
+      title: "HELOC / HELOAN",
+      points: ["Tap equity for projects", "Flexible draws", "2nd position options"],
+      color: "#F97316",
+      tint: "rgba(249, 115, 22, 0.10)",
+    },
+  ];
+
+  return (
+    <SliderShell cardWidth={CARD_MIN_WIDTH}>
+      {programs.map((p) => (
+        <div key={p.title} className="snap-start shrink-0" style={{ minWidth: CARD_MIN_WIDTH }}>
+          <ProgramCard {...p} />
+        </div>
+      ))}
+    </SliderShell>
+  );
+}
+
+function ReviewsWidget() {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.innerHTML = ELFSIGHT_WIDGET_DIV;
+    }
+
+    const existing = document.querySelector(`script[src="${ELFSIGHT_SCRIPT_SRC}"]`);
+    if (!existing) {
+      const s = document.createElement("script");
+      s.src = ELFSIGHT_SCRIPT_SRC;
+      s.async = true;
+      document.body.appendChild(s);
+    }
+
+    // IMPORTANT: Elfsight sometimes needs an explicit init call after hydration.
+    let tries = 0;
+    const t = window.setInterval(() => {
+      tries += 1;
+      const platform = (window as any).ElfsightPlatform;
+      if (platform && typeof platform.init === "function") {
+        try {
+          platform.init();
+        } catch {
+          // ignore
+        }
+        window.clearInterval(t);
+      }
+      if (tries > 40) window.clearInterval(t);
+    }, 250);
+
+    return () => window.clearInterval(t);
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+      style={{ minHeight: 200 }}
+    />
+  );
+}
+
+function SiteHeader({ page }: { page: Page }) {
+  return (
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+        <a
+          href="#"
+          className="flex items-center gap-2"
+          onClick={(e) => {
+            e.preventDefault();
+            go("home");
+          }}
+        >
+          <div
+            className="grid h-9 w-9 place-items-center rounded-xl text-sm font-bold text-white"
+            style={{ background: colors.primary }}
+          >
+            G4
+          </div>
+          <div className="leading-tight">
+            <div className="text-sm font-bold" style={{ color: colors.accent }}>
+              G4 Mortgage
+            </div>
+            <div className="text-xs text-slate-500">Home loans made simple</div>
+          </div>
+        </a>
+
+        <nav className="hidden items-center gap-6 md:flex">
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              go("home");
+              setTimeout(() => {
+                const el = document.getElementById("programs");
+                el?.scrollIntoView({ behavior: "smooth" });
+              }, 0);
+            }}
+            className={
+              "text-sm font-semibold hover:text-slate-900 " +
+              (page === "home" ? "text-slate-900" : "text-slate-700")
+            }
+          >
+            Loan Programs
+          </a>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              go("va");
+            }}
+            className={
+              "text-sm font-semibold hover:text-slate-900 " +
+              (page === "va" ? "text-slate-900" : "text-slate-700")
+            }
+          >
+            VA Loans
+          </a>
+          <a href={APPLY_URL} className="text-sm font-semibold text-slate-700 hover:text-slate-900">
+            Apply
+          </a>
+          <a href={INQUIRY_URL} className="text-sm font-semibold text-slate-700 hover:text-slate-900">
+            Inquiry
+          </a>
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <a
+            href={APPLY_URL}
+            className="hidden items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm md:inline-flex"
+            style={{ background: colors.primary }}
+          >
+            Apply Now
+          </a>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-slate-200 bg-slate-900 text-slate-200">
+      <div className="mx-auto max-w-7xl px-4 py-12">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <div
+                className="grid h-10 w-10 place-items-center rounded-xl text-sm font-bold text-white"
+                style={{ background: colors.primary }}
+              >
+                G4
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white">G4 Mortgage</div>
+                <div className="text-xs text-slate-400">Home loans made simple</div>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-slate-400">
+              Fast responses, detailed files, and clean underwriting. Serving clients nationwide.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Resources</h4>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-white"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    go("home");
+                    setTimeout(() => {
+                      const el = document.getElementById("programs");
+                      el?.scrollIntoView({ behavior: "smooth" });
+                    }, 0);
+                  }}
+                >
+                  Loan programs
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-white"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    go("va");
+                  }}
+                >
+                  VA loans
+                </a>
+              </li>
+              <li>
+                <a href={ZILLOW_PROFILE_URL} className="hover:text-white" target="_blank" rel="noreferrer">
+                  Zillow profile
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Get started</h4>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li>
+                <a href={INQUIRY_URL} className="hover:text-white">
+                  Start inquiry
+                </a>
+              </li>
+              <li>
+                <a href={APPLY_URL} className="hover:text-white">
+                  Apply now
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contact us</h4>
+            <div className="mt-3 space-y-2 text-xs text-slate-200">
+              <p className="flex items-center gap-2">
+                <Phone className="h-4 w-4" /> (425) 750-1731
+              </p>
+              <p className="flex items-center gap-2">
+                <Mail className="h-4 w-4" /> jleslie@barrettfinancial.com
+              </p>
+              <p className="flex items-start gap-2">
+                <MapPin className="mt-0.5 h-4 w-4" />
+                <span>
+                  1120 Pacific Ave, Suite 205
+                  <br />
+                  Tacoma, WA 98402
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-10 border-t border-slate-800 pt-6 text-xs text-slate-400">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <p>© {new Date().getFullYear()} G4 Mortgage. All rights reserved.</p>
+            <p>Joe Leslie · Mortgage Loan Originator · NMLS# 1998387 · Equal Housing Opportunity</p>
+          </div>
+          <p className="mt-2">
+            This is not a commitment to lend. Information is subject to change. Rates and programs may vary based on credit,
+            income, property type, and other factors.
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function HomePage() {
+  return (
+    <>
+      {/* Hero */}
+      <section id="home" className="relative overflow-hidden" style={{ background: colors.bg }}>
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 md:grid-cols-2 md:py-20">
+          <div>
+            <Badge>49 States · Purchase • Refi • Investment</Badge>
+            <h1 className="mt-4 text-3xl font-extrabold leading-tight md:text-5xl" style={{ color: colors.accent }}>
+              Clear Guidance.
+              <br className="hidden sm:block" /> Hands-on service.
+            </h1>
+            <p className="mt-4 max-w-xl text-sm text-slate-700">
+              No public rate tables. Tell us your scenario and we’ll build options around your goals.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <a
+                href={INQUIRY_URL}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm"
+                style={{ background: colors.primary }}
+              >
+                Start Inquiry <ArrowRight className="h-4 w-4" />
+              </a>
+              <a
+                href={APPLY_URL}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
+              >
+                Apply Now
+              </a>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-slate-600">
+              <span className="inline-flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" style={{ color: "#16A34A" }} /> 500+ transactions
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Home className="h-4 w-4" style={{ color: "#0EA5E9" }} /> Purchase, Refi, Cash-out
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Building2 className="h-4 w-4" style={{ color: "#F59E0B" }} /> Primary • Second • Investment
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl p-2" style={{ background: "rgba(124, 58, 237, 0.12)" }}>
+                  <Calculator className="h-6 w-6" style={{ color: "#7C3AED" }} />
+                </div>
+                <h3 className="text-lg font-semibold">Quick Scenario Request</h3>
+              </div>
+              <p className="mt-2 text-sm text-slate-700">
+                Send a quick inquiry for custom options, or start the full application if you’re ready.
+              </p>
+              <div className="mt-4 grid grid-cols-1 gap-3">
+                <a
+                  href={INQUIRY_URL}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm"
+                  style={{ background: colors.primary }}
+                >
+                  Start Inquiry <ArrowRight className="h-4 w-4" />
+                </a>
+                <a
+                  href={APPLY_URL}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
+                >
+                  Apply Now
+                </a>
+              </div>
+              <p className="mt-3 text-xs text-slate-500">
+                Pricing depends on credit, LTV, property type, mortgage insurance, and more.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Programs */}
+      <section id="programs" className="mx-auto max-w-7xl px-4 py-16">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <Badge>Loan Programs</Badge>
+            <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
+              Options for every borrower
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-700">
+              From first-time buyers to seasoned investors, we’ll match the right program for your goals.
+            </p>
+          </div>
+          <a
+            href="#contact"
+            className="hidden items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 md:inline-flex"
+          >
+            Speak with a specialist
+          </a>
+        </div>
+        <ProgramSlider />
+      </section>
+
+      {/* Calculator */}
+      <section id="calculator" className="mx-auto max-w-7xl px-4 py-16">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <Badge>Mortgage Calculator</Badge>
+            <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
+              Estimate a payment, then get it dialed in
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-700">
+              Ballpark only—final numbers depend on taxes, insurance, HOA, MI, credit, and property details.
+            </p>
+          </div>
+          <a
+            href={INQUIRY_URL}
+            className="hidden items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 md:inline-flex"
+          >
+            Send my scenario
+          </a>
+        </div>
+        <PurchaseCalculator />
+      </section>
+
+      {/* Process */}
+      <section id="process" className="border-y border-slate-200" style={{ background: colors.bg }}>
+        <div className="mx-auto max-w-7xl px-4 py-16">
+          <Badge>How it works</Badge>
+          <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
+            Fast, transparent, accurate
+          </h2>
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Step n="1" title="Apply online" text="10–15 minutes. Secure portal. Upload docs as you go." />
+            <Step n="2" title="Custom options" text="We build scenarios around payment, cash-to-close, and speed." />
+            <Step n="3" title="Clear to close" text="We coordinate with title/escrow to close smoothly." />
+          </div>
+        </div>
+      </section>
+
+      {/* Team */}
+      <section id="team" className="mx-auto max-w-7xl px-4 py-16">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <Badge>Meet the Team</Badge>
+            <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
+              Your lending team
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-700">
+              Direct contact info on every card—call, email, or click Apply Now.
+            </p>
+          </div>
+          <a
+            href="#contact"
+            className="hidden items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 md:inline-flex"
+          >
+            Partner with us
+          </a>
+        </div>
+        <TeamSlider />
+      </section>
+
+      {/* Reviews */}
+      <section id="reviews" className="border-y border-slate-200" style={{ background: colors.bg }}>
+        <div className="mx-auto max-w-7xl px-4 py-16">
+          <Badge>Reviews</Badge>
+          <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
+            Verified Zillow feedback
+          </h2>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Star key={i} className="h-4 w-4" style={{ color: colors.primary }} />
+              ))}
+            </span>
+            <span className="text-sm text-slate-600">
+              {ZILLOW_RATING_AVG.toFixed(1)} average · {ZILLOW_REVIEW_COUNT}+ reviews
+            </span>
+            <a
+              href={ZILLOW_PROFILE_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-slate-700 hover:text-slate-900"
+            >
+              View on Zillow <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
+          <p className="mt-2 max-w-2xl text-sm text-slate-700">Reviews below are displayed via your Elfsight widget.</p>
+          <ReviewsWidget />
+        </div>
+      </section>
+
+      {/* Contact */}
+      <section id="contact" className="mx-auto max-w-7xl px-4 py-16">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div>
+            <Badge>Get in touch</Badge>
+            <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
+              Talk to a loan officer
+            </h2>
+            <p className="mt-2 max-w-xl text-sm text-slate-700">
+              Prefer a quick text/call? Or send an inquiry form with your scenario.
+            </p>
+
+            <div className="mt-4 space-y-2 text-sm text-slate-700">
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4" /> (425) 750-1731
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4" /> jleslie@barrettfinancial.com
+              </div>
+              <div className="flex items-start gap-2">
+                <MapPin className="mt-0.5 h-4 w-4" />
+                <span>
+                  1120 Pacific Ave, Suite 205
+                  <br />
+                  Tacoma, WA 98402
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <a
+                href={APPLY_URL}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
+                style={{ background: colors.primary }}
+              >
+                Apply Now <ArrowRight className="h-4 w-4" />
+              </a>
+              <a
+                href={INQUIRY_URL}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
+              >
+                Start Inquiry
+              </a>
+            </div>
+
+            <p className="mt-4 text-xs text-slate-500">
+              Not a commitment to lend. All loans subject to credit and underwriting approval.
+            </p>
+          </div>
+
+          <ContactForm />
+        </div>
+      </section>
+    </>
+  );
+}
+
+function VALoansPage() {
+  return (
+    <>
+      <section style={{ background: colors.bg }} className="border-b border-slate-200">
+        <div className="mx-auto max-w-7xl px-4 py-14">
+          <Badge>VA Loans</Badge>
+          <h1 className="mt-3 text-3xl font-extrabold md:text-5xl" style={{ color: colors.accent }}>
+            VA Purchase &amp; VA Refinance Options
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm text-slate-700">
+            Built for eligible veterans and service members. We’ll help you choose the right VA option and handle the file end-to-end.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a
+              href={INQUIRY_URL}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
+              style={{ background: colors.primary }}
+            >
+              Start VA Inquiry <ArrowRight className="h-4 w-4" />
+            </a>
+            <a
+              href={APPLY_URL}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
+            >
+              Apply Now
+            </a>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                go("home");
+              }}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
+            >
+              Back to Home
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-14">
+        <div className="mb-4">
+          <Badge>VA Programs</Badge>
+          <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
+            Choose the right VA path
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-slate-700">Here’s a clean breakdown of the VA options you asked for.</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <ProgramCard
+            icon={BadgeCheck}
+            title="VA IRRRL (Streamline Refi)"
+            points={[
+              "Fast refi for existing VA loans",
+              "Often reduced documentation vs full refi",
+              "Designed to lower rate/payment or move to fixed",
+            ]}
+            color="#0EA5E9"
+            tint="rgba(14, 165, 233, 0.10)"
+          />
+          <ProgramCard
+            icon={ShieldCheck}
+            title="VA Type 1 Refinance"
+            points={[
+              "Great when you have a VA loan and need more flexibility",
+              "Can be used to change term or structure",
+              "Scenario-based: we’ll advise best path",
+            ]}
+            color="#16A34A"
+            tint="rgba(22, 163, 74, 0.10)"
+          />
+          <ProgramCard
+            icon={ShieldCheck}
+            title="VA Type 2 Refinance"
+            points={[
+              "For more complex refinance goals",
+              "Potentially cash-out / consolidation scenarios",
+              "We’ll map it to entitlement, value, and credit",
+            ]}
+            color="#7C3AED"
+            tint="rgba(124, 58, 237, 0.10)"
+          />
+          <ProgramCard
+            icon={Home}
+            title="VA Purchase"
+            points={["0% down for eligible buyers", "No monthly mortgage insurance", "Strong option for primary residence purchases"]}
+            color="#0B3D91"
+            tint="rgba(11, 61, 145, 0.10)"
+          />
+        </div>
+      </section>
+
+      <section className="border-y border-slate-200" style={{ background: colors.bg }}>
+        <div className="mx-auto max-w-7xl px-4 py-14">
+          <div className="mb-4">
+            <Badge>VA Refinance Calculator</Badge>
+            <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
+              Refinance estimate (default 5.625%)
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-700">
+              Principal &amp; interest estimate for refinance (not purchase). You can edit the rate.
+            </p>
+          </div>
+          <RefiCalculator defaultRate={5.625} />
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-14">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl p-2" style={{ background: "rgba(245, 158, 11, 0.10)" }}>
+              <ShieldCheck className="h-6 w-6" style={{ color: "#F59E0B" }} />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900">Ready for a VA quote?</h3>
+          </div>
+          <p className="mt-2 text-sm text-slate-700">
+            Send your scenario and we’ll confirm eligibility and build the cleanest path (IRRRL vs Type 1/2 vs Purchase).
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a
+              href={INQUIRY_URL}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
+              style={{ background: colors.primary }}
+            >
+              Start VA Inquiry <ArrowRight className="h-4 w-4" />
+            </a>
+            <a
+              href={APPLY_URL}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
+            >
+              Apply Now
+            </a>
+          </div>
+          <p className="mt-3 text-xs text-slate-500">Not a commitment to lend. All loans subject to credit and underwriting approval.</p>
+        </div>
+      </section>
+    </>
+  );
+}
+
+// Basic sanity tests (safe in browser; no-op if console is missing)
+(function runSanityTests() {
+  try {
+    const a = calcMonthlyPI(300000, 6, 30);
+    const b = calcMonthlyPI(300000, 0, 30);
+    const c = calcMonthlyPI(420000, 5.625, 30);
+    console.assert(Number.isFinite(a) && a > 0, "calcMonthlyPI should be positive");
+    console.assert(Math.abs(b - 833.3333) < 2, "0% should be loan/n");
+    console.assert(calcMonthlyPI(0, 6, 30) === 0, "0 loan should be 0");
+    console.assert(Number.isFinite(c) && c > 0, "VA refi PI should be positive");
+
+    // Additional tests (added)
+    console.assert(calcMonthlyPI(100000, 6, 0) === 0, "0 years should be 0");
+    console.assert(calcMonthlyPI(-100000, 6, 30) === 0, "negative loan should be 0");
+    const d = calcMonthlyPI(100000, 120, 30);
+    console.assert(Number.isFinite(d) && d > 0, "high rate should still compute");
+  } catch {
+    // ignore
+  }
+})();
+
+export default function MortgageSite() {
+  const [page, setPage] = useState<Page>("home");
+
+  useEffect(() => {
+    const sync = () => setPage(currentPageFromHash());
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-white font-sans text-slate-900">
+      <SiteHeader page={page} />
+      {page === "va" ? <VALoansPage /> : <HomePage />}
+      <Footer />
+    </div>
+  );
+}
