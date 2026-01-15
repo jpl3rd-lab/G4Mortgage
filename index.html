@@ -1,1369 +1,650 @@
-"use client";
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>G4 Mortgage</title>
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  Phone,
-  Mail,
-  Home,
-  Building2,
-  ShieldCheck,
-  Calculator,
-  CheckCircle2,
-  Star,
-  MapPin,
-  ExternalLink,
-  BadgeCheck,
-} from "lucide-react";
-
-// Brand tokens
-const colors = {
-  primary: "#0B3D91", // navy
-  accent: "#082C5C", // deep navy
-  bg: "#F2F6FF", // light tint
-};
-
-const APPLY_URL =
-  "https://181106.my1003app.com/1998387/register?time=1721681398525";
-const INQUIRY_URL =
-  "https://181106.my1003app.com/1998387/inquiry?time=1725987208470";
-const ZILLOW_PROFILE_URL = "https://www.zillow.com/profile/Joe%20Leslie";
-
-// Elfsight embed for Zillow reviews
-const ELFSIGHT_WIDGET_DIV =
-  '<div class="elfsight-app-c67759cc-4860-461d-a2c7-689b09adffb7" data-elfsight-app-lazy></div>';
-const ELFSIGHT_SCRIPT_SRC = "https://elfsightcdn.com/platform.js";
-
-// Manual display values (safe defaults if the widget doesn't expose these)
-const ZILLOW_RATING_AVG = 4.9;
-const ZILLOW_REVIEW_COUNT = 137;
-
-type Page = "home" | "va";
-
-function go(page: Page) {
-  // Hash routing so it also works if you ever export static
-  if (page === "va") window.location.hash = "va";
-  else window.location.hash = "";
-}
-
-function currentPageFromHash(): Page {
-  const h = (typeof window !== "undefined" ? window.location.hash : "") || "";
-  return h.replace("#", "").toLowerCase() === "va" ? "va" : "home";
-}
-
-function Badge({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs font-semibold tracking-wide text-slate-600">
-      {children}
-    </span>
-  );
-}
-
-function ProgramCard({
-  icon: Icon,
-  title,
-  points,
-  color = colors.primary,
-  tint,
-}: {
-  icon: any;
-  title: string;
-  points: string[];
-  color?: string;
-  tint?: string;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.35 }}
-      className="group h-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md"
-    >
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl p-2" style={{ background: tint || colors.bg }}>
-          <Icon className="h-6 w-6" style={{ color }} />
-        </div>
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-      </div>
-      <ul className="mt-4 space-y-2 text-sm text-slate-700">
-        {points.map((p, idx) => (
-          <li key={idx} className="flex items-start gap-2">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color }} />
-            <span>{p}</span>
-          </li>
-        ))}
-      </ul>
-    </motion.div>
-  );
-}
-
-function Step({ n, title, text }: { n: string; title: string; text: string }) {
-  return (
-    <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div
-        className="absolute -top-3 left-6 rounded-full px-3 py-1 text-xs font-bold text-white"
-        style={{ background: colors.accent }}
-      >
-        STEP {n}
-      </div>
-      <h4 className="mt-2 text-base font-semibold text-slate-900">{title}</h4>
-      <p className="mt-2 text-sm text-slate-700">{text}</p>
-    </div>
-  );
-}
-
-function TeamCard({
-  name,
-  role,
-  img,
-  phone,
-  email,
-}: {
-  name: string;
-  role: string;
-  img: string;
-  phone: string;
-  email: string;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.35 }}
-      className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-    >
-      <img src={img} alt={name} className="h-44 w-full rounded-xl object-cover" />
-      <div className="mt-4">
-        <h4 className="text-base font-semibold text-slate-900">{name}</h4>
-        <p className="text-sm text-slate-600">{role}</p>
-        <div className="mt-3 space-y-1 text-sm">
-          <a
-            href={`tel:${phone.replace(/[^0-9+]/g, "")}`}
-            className="flex items-center gap-2 text-slate-700 hover:text-slate-900"
-          >
-            <Phone className="h-4 w-4" style={{ color: "#0EA5E9" }} />
-            {phone}
-          </a>
-          <a
-            href={`mailto:${email}`}
-            className="flex items-center gap-2 text-slate-700 hover:text-slate-900"
-          >
-            <Mail className="h-4 w-4" style={{ color: "#7C3AED" }} />
-            {email}
-          </a>
-        </div>
-        <div className="mt-4">
-          <a
-            href={APPLY_URL}
-            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-white"
-            style={{ background: colors.primary }}
-          >
-            Apply Now <ArrowRight className="h-4 w-4" />
-          </a>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function ContactForm() {
-  const [sent, setSent] = useState(false);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    // Option A (as discussed): show a confirmation state. We can wire this to email/CRM once you tell me the target.
-    setSent(true);
-  }
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      {sent ? (
-        <div className="text-center">
-          <h4 className="text-lg font-semibold text-slate-900">Thanks! 🎉</h4>
-          <p className="mt-1 text-sm text-slate-700">
-            We’ll reach out shortly. If it’s urgent, click Apply Now for priority
-            intake.
-          </p>
-          <a
-            href={APPLY_URL}
-            className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 font-semibold text-white"
-            style={{ background: colors.primary }}
-          >
-            Apply Now <ArrowRight className="h-4 w-4" />
-          </a>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                First name
-              </label>
-              <input
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2"
-                required
-                name="firstName"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Last name
-              </label>
-              <input
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2"
-                required
-                name="lastName"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Email
-              </label>
-              <input
-                type="email"
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2"
-                required
-                name="email"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Phone
-              </label>
-              <input
-                type="tel"
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2"
-                name="phone"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              How can we help?
-            </label>
-            <textarea
-              rows={4}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2"
-              placeholder="Pre-approval, purchase, refinance, self-employed, VA, FHA, DSCR, ITIN, etc."
-              name="message"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 font-semibold text-white"
-              style={{ background: colors.primary }}
-            >
-              Send Message <ArrowRight className="h-4 w-4" />
-            </button>
-            <a
-              href={APPLY_URL}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-900"
-            >
-              Apply Now
-            </a>
-          </div>
-          <p className="text-xs text-slate-500">
-            By submitting, you agree to be contacted by phone, text, or email.
-            This is not a commitment to lend. All loans subject to credit
-            approval.
-          </p>
-        </form>
-      )}
-    </div>
-  );
-}
-
-function calcMonthlyPI(loanAmount: number, annualRatePct: number, years: number) {
-  const n = Math.max(0, Math.round(years * 12));
-  if (!loanAmount || !n) return 0;
-  const monthlyRate = annualRatePct / 100 / 12;
-  if (monthlyRate === 0) return loanAmount / n;
-  const denom = 1 - Math.pow(1 + monthlyRate, -n);
-  if (denom === 0) return 0;
-  return (loanAmount * monthlyRate) / denom;
-}
-
-function formatMoney0(x: number) {
-  return (x || 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
-}
-
-function PurchaseCalculator() {
-  const [price, setPrice] = useState(600000);
-  const [downPct, setDownPct] = useState(20);
-  const [rate, setRate] = useState(6.5);
-  const [years, setYears] = useState(30);
-
-  const loanAmount = useMemo(() => {
-    const p = Number(price || 0);
-    const d = Number(downPct || 0) / 100;
-    return Math.max(0, p * (1 - d));
-  }, [price, downPct]);
-
-  const monthlyPI = useMemo(() => {
-    return calcMonthlyPI(loanAmount, Number(rate || 0), Number(years || 0));
-  }, [loanAmount, rate, years]);
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl p-2" style={{ background: "rgba(8, 47, 73, 0.08)" }}>
-          <Calculator className="h-6 w-6" style={{ color: colors.primary }} />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">Quick Payment Estimate</h3>
-          <p className="text-xs text-slate-600">
-            Principal &amp; interest only – taxes, insurance, and MI are not included.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Home price</label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">$</span>
-              <input
-                type="number"
-                className="w-full rounded-xl border border-slate-300 bg-white px-6 py-2 text-sm outline-none focus:ring-2"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                min={0}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Down payment %</label>
-            <div className="relative">
-              <input
-                type="number"
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2"
-                value={downPct}
-                onChange={(e) => setDownPct(Number(e.target.value))}
-                min={0}
-                max={100}
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Rate %</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2"
-                  value={rate}
-                  onChange={(e) => setRate(Number(e.target.value))}
-                  min={0}
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Term (years)</label>
-              <input
-                type="number"
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2"
-                value={years}
-                onChange={(e) => setYears(Number(e.target.value))}
-                min={1}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3 rounded-2xl bg-slate-50 p-4 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-slate-600">Estimated loan amount</span>
-            <span className="font-semibold text-slate-900">${formatMoney0(loanAmount)}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-600">Est. principal &amp; interest</span>
-            <span className="text-lg font-semibold text-slate-900">${formatMoney0(monthlyPI)}/mo</span>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            This calculator is for illustration only and doesn’t include taxes, insurance, HOA dues, or mortgage insurance.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <a
-              href={INQUIRY_URL}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900"
-            >
-              Request custom scenario <ArrowRight className="h-3 w-3" />
-            </a>
-            <a
-              href={APPLY_URL}
-              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-white"
-              style={{ background: colors.primary }}
-            >
-              Start full application
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RefiCalculator({ defaultRate = 5.625 }: { defaultRate?: number }) {
-  const [balance, setBalance] = useState(420000);
-  const [years, setYears] = useState(30);
-  const [rate, setRate] = useState<number>(defaultRate);
-
-  useEffect(() => {
-    setRate(defaultRate);
-  }, [defaultRate]);
-
-  const monthlyPI = useMemo(() => {
-    return calcMonthlyPI(Number(balance || 0), Number(rate || 0), Number(years || 0));
-  }, [balance, rate, years]);
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl p-2" style={{ background: "rgba(11, 61, 145, 0.10)" }}>
-          <Calculator className="h-6 w-6" style={{ color: colors.primary }} />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">Refinance Payment Estimate</h3>
-          <p className="text-xs text-slate-600">Principal &amp; interest only.</p>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Current loan balance</label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">$</span>
-              <input
-                type="number"
-                className="w-full rounded-xl border border-slate-300 bg-white px-6 py-2 text-sm outline-none focus:ring-2"
-                value={balance}
-                onChange={(e) => setBalance(Number(e.target.value))}
-                min={0}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Rate %</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.001"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2"
-                  value={rate}
-                  onChange={(e) => setRate(Number(e.target.value))}
-                  min={0}
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">New term (years)</label>
-              <input
-                type="number"
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2"
-                value={years}
-                onChange={(e) => setYears(Number(e.target.value))}
-                min={1}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-600">Rate used</span>
-              <span className="font-semibold text-slate-900">{rate.toFixed(3)}%</span>
-            </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Marketing estimate only. Final rate, payment, and APR depend on credit, loan size, equity, program, and underwriting factors.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-3 rounded-2xl bg-slate-50 p-4 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-slate-600">Loan amount</span>
-            <span className="font-semibold text-slate-900">${formatMoney0(balance)}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-600">Est. principal &amp; interest</span>
-            <span className="text-lg font-semibold text-slate-900">${formatMoney0(monthlyPI)}/mo</span>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <a
-              href={INQUIRY_URL}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900"
-            >
-              Request scenario <ArrowRight className="h-3 w-3" />
-            </a>
-            <a
-              href={APPLY_URL}
-              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-white"
-              style={{ background: colors.primary }}
-            >
-              Apply Now
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SliderShell({ children, cardWidth }: { children: React.ReactNode; cardWidth: number }) {
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const GUTTER = 16;
-
-  const scroll = (dir: number) => {
-    if (!trackRef.current) return;
-    trackRef.current.scrollBy({
-      left: dir * (cardWidth + GUTTER) * 1.5,
-      behavior: "smooth",
-    });
-  };
-
-  return (
-    <div className="relative">
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-white to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white to-transparent" />
-
-      <div ref={trackRef} className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-1">
-        {children}
-      </div>
-
-      <div className="pointer-events-none absolute -left-2 top-1/2 hidden -translate-y-1/2 md:block">
-        <button
-          onClick={() => scroll(-1)}
-          className="pointer-events-auto rounded-full border border-slate-200 bg-white p-2 shadow-sm hover:shadow"
-          aria-label="Previous"
-        >
-          <ArrowRight className="h-5 w-5 rotate-180" />
-        </button>
-      </div>
-      <div className="pointer-events-none absolute -right-2 top-1/2 hidden -translate-y-1/2 md:block">
-        <button
-          onClick={() => scroll(1)}
-          className="pointer-events-auto rounded-full border border-slate-200 bg-white p-2 shadow-sm hover:shadow"
-          aria-label="Next"
-        >
-          <ArrowRight className="h-5 w-5" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function TeamSlider() {
-  const CARD_WIDTH = 320;
-
-  return (
-    <SliderShell cardWidth={CARD_WIDTH}>
-      {[
-        {
-          name: "Joe Leslie",
-          role: "Mortgage Loan Originator",
-          img: "https://images.unsplash.com/photo-1603415526960-f7e0328c63b1?q=80&w=1280&auto=format&fit=crop",
-          phone: "(425) 750-1731",
-          email: "jleslie@barrettfinancial.com",
-        },
-        {
-          name: "JD Thueringer",
-          role: "Loan Officer",
-          img: "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?q=80&w=1280&auto=format&fit=crop",
-          phone: "(425) 555-0201",
-          email: "jd@g4mortgage.com",
-        },
-        {
-          name: "Jack Sullivan",
-          role: "Loan Officer",
-          img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1280&auto=format&fit=crop",
-          phone: "(425) 555-0202",
-          email: "jack@g4mortgage.com",
-        },
-        {
-          name: "Monica Alfieri",
-          role: "Client Experience",
-          img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1280&auto=format&fit=crop",
-          phone: "(425) 555-0203",
-          email: "monica@g4mortgage.com",
-        },
-        {
-          name: "Matt Clark",
-          role: "Loan Partner · Processing",
-          img: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=1280&auto=format&fit=crop",
-          phone: "(425) 555-0204",
-          email: "matt@g4mortgage.com",
-        },
-        {
-          name: "Krystal Biehn",
-          role: "Loan Officer",
-          img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2c?q=80&w=1280&auto=format&fit=crop",
-          phone: "(425) 555-0205",
-          email: "krystal@g4mortgage.com",
-        },
-      ].map((t) => (
-        <div key={t.name} className="snap-start shrink-0" style={{ minWidth: CARD_WIDTH }}>
-          <TeamCard {...t} />
-        </div>
-      ))}
-    </SliderShell>
-  );
-}
-
-function ProgramSlider() {
-  const CARD_MIN_WIDTH = 340;
-
-  const programs = [
-    {
-      icon: Home,
-      title: "Conventional 3%+ down",
-      points: ["Great for strong credit", "Low MI options", "Fixed & ARMs"],
-      color: "#0B3D91",
-      tint: "rgba(11, 61, 145, 0.10)",
-    },
-    {
-      icon: ShieldCheck,
-      title: "FHA 3.5% down",
-      points: ["Flexible credit & DTI", "Assumable loans", "Streamline refi"],
-      color: "#16A34A",
-      tint: "rgba(22, 163, 74, 0.10)",
-    },
-    {
-      icon: ShieldCheck,
-      title: "VA 0% down",
-      points: ["No MI", "Flexible guidelines", "Assumable"],
-      color: "#0EA5E9",
-      tint: "rgba(14, 165, 233, 0.10)",
-    },
-    {
-      icon: Building2,
-      title: "USDA 0% down",
-      points: ["Rural properties", "Income caps", "Great for first-time buyers"],
-      color: "#22C55E",
-      tint: "rgba(34, 197, 94, 0.10)",
-    },
-    {
-      icon: Building2,
-      title: "Jumbo",
-      points: ["High loan amounts", "Competitive pricing", "Alt-doc options"],
-      color: "#7C3AED",
-      tint: "rgba(124, 58, 237, 0.10)",
-    },
-    {
-      icon: Home,
-      title: "Investor / DSCR",
-      points: ["Qualify on rent", "Short & long-term rentals", "LLC-friendly"],
-      color: "#F59E0B",
-      tint: "rgba(245, 158, 11, 0.10)",
-    },
-    {
-      icon: Home,
-      title: "Bank Statement",
-      points: ["12–24 mo statements", "Self-employed friendly", "No tax returns in many cases"],
-      color: "#0D9488",
-      tint: "rgba(13, 148, 136, 0.10)",
-    },
-    {
-      icon: Home,
-      title: "ITIN",
-      points: ["Flexible documentation", "Purchase & refi", "Fixed & ARM options"],
-      color: "#E11D48",
-      tint: "rgba(225, 29, 72, 0.10)",
-    },
-    {
-      icon: Home,
-      title: "HELOC / HELOAN",
-      points: ["Tap equity for projects", "Flexible draws", "2nd position options"],
-      color: "#F97316",
-      tint: "rgba(249, 115, 22, 0.10)",
-    },
-  ];
-
-  return (
-    <SliderShell cardWidth={CARD_MIN_WIDTH}>
-      {programs.map((p) => (
-        <div key={p.title} className="snap-start shrink-0" style={{ minWidth: CARD_MIN_WIDTH }}>
-          <ProgramCard {...p} />
-        </div>
-      ))}
-    </SliderShell>
-  );
-}
-
-function ReviewsWidget() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.innerHTML = ELFSIGHT_WIDGET_DIV;
-    }
-
-    const existing = document.querySelector(`script[src="${ELFSIGHT_SCRIPT_SRC}"]`);
-    if (!existing) {
-      const s = document.createElement("script");
-      s.src = ELFSIGHT_SCRIPT_SRC;
-      s.async = true;
-      document.body.appendChild(s);
-    }
-
-    // IMPORTANT: Elfsight sometimes needs an explicit init call after hydration.
-    let tries = 0;
-    const t = window.setInterval(() => {
-      tries += 1;
-      const platform = (window as any).ElfsightPlatform;
-      if (platform && typeof platform.init === "function") {
-        try {
-          platform.init();
-        } catch {
-          // ignore
-        }
-        window.clearInterval(t);
-      }
-      if (tries > 40) window.clearInterval(t);
-    }, 250);
-
-    return () => window.clearInterval(t);
-  }, []);
-
-  return (
-    <div
-      ref={containerRef}
-      className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-      style={{ minHeight: 200 }}
+    <!-- Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
     />
-  );
-}
 
-function SiteHeader({ page }: { page: Page }) {
-  return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-        <a
-          href="#"
-          className="flex items-center gap-2"
-          onClick={(e) => {
-            e.preventDefault();
-            go("home");
-          }}
-        >
-          <div
-            className="grid h-9 w-9 place-items-center rounded-xl text-sm font-bold text-white"
-            style={{ background: colors.primary }}
-          >
-            G4
-          </div>
-          <div className="leading-tight">
-            <div className="text-sm font-bold" style={{ color: colors.accent }}>
-              G4 Mortgage
+    <style>
+      :root{
+        --g4-primary:#0B3D91;
+        --g4-accent:#082C5C;
+        --g4-bg:#EEF4FF;
+        --g4-border:#D6E1F2;
+        --g4-text:#0F172A;
+        --g4-muted:#334155;
+        --g4-card:#ffffff;
+      }
+
+      *{ box-sizing:border-box; }
+      html,body{ margin:0; padding:0; }
+      body{
+        font-family:"Poppins",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+        color:var(--g4-text);
+        background:#fff;
+      }
+
+      /* Layout */
+      .container{ max-width:1200px; margin:0 auto; padding:0 18px; }
+      .section{ padding:64px 0; }
+      .section--soft{ background:var(--g4-bg); border-top:1px solid rgba(214,225,242,.7); border-bottom:1px solid rgba(214,225,242,.7); }
+      .h2{ margin:0; font-size:28px; font-weight:800; color:var(--g4-accent); letter-spacing:-0.01em; }
+      .p{ margin:10px 0 0; font-size:14px; color:var(--g4-muted); }
+      .badge{
+        display:inline-flex; align-items:center;
+        padding:8px 14px; border-radius:999px;
+        background:#fff; border:1px solid var(--g4-border);
+        font-size:12px; font-weight:500; color:#334155;
+        box-shadow:0 1px 0 rgba(15,23,42,.03);
+      }
+
+      /* Buttons */
+      .btn{
+        display:inline-flex; align-items:center; justify-content:center; gap:10px;
+        padding:10px 18px; border-radius:12px;
+        font-size:14px; font-weight:600; text-decoration:none;
+        user-select:none;
+        transition:transform .05s ease, box-shadow .15s ease, filter .15s ease, background .15s ease;
+        white-space:nowrap;
+      }
+      .btn:active{ transform:translateY(1px); }
+      .btn--primary{
+        background:var(--g4-primary); color:#fff;
+        box-shadow:0 8px 18px rgba(11,61,145,.18);
+      }
+      .btn--primary:hover{ filter:brightness(1.03); }
+      .btn--outline{
+        background:#fff; color:var(--g4-text);
+        border:1px solid #C9D7F0;
+        box-shadow:0 2px 10px rgba(15,23,42,.04);
+      }
+      .btn--full{ width:100%; }
+
+      /* Header */
+      .header{
+        position:sticky; top:0; z-index:50;
+        background:rgba(255,255,255,.9);
+        backdrop-filter:blur(8px);
+        border-bottom:1px solid rgba(214,225,242,.8);
+      }
+      .header__row{
+        display:flex; align-items:center; justify-content:space-between;
+        padding:12px 0;
+      }
+      .brand{
+        display:flex; align-items:center; gap:10px;
+        text-decoration:none; color:inherit;
+      }
+      .brand__logo{
+        width:38px; height:38px; border-radius:12px;
+        display:grid; place-items:center;
+        background:var(--g4-primary); color:#fff;
+        font-weight:800;
+      }
+      .brand__name{ font-weight:800; color:var(--g4-accent); font-size:14px; line-height:1.1; }
+      .brand__tag{ font-size:12px; color:#64748B; line-height:1.1; margin-top:2px; }
+      .nav{ display:none; gap:18px; align-items:center; }
+      .nav a{ font-size:13px; font-weight:600; color:#334155; text-decoration:none; }
+      .nav a:hover{ color:#0F172A; }
+
+      @media (min-width: 900px){
+        .nav{ display:flex; }
+      }
+
+      /* HERO */
+      .hero{ background:var(--g4-bg); padding:56px 0; }
+      .hero__grid{
+        display:grid; grid-template-columns:1.1fr 0.9fr;
+        gap:40px; align-items:center;
+      }
+      .hero__title{
+        margin:18px 0 0;
+        font-size:56px; line-height:1.02; font-weight:800;
+        letter-spacing:-0.02em; color:var(--g4-accent);
+      }
+      .hero__sub{ margin:14px 0 0; font-size:14px; color:var(--g4-muted); max-width:560px; }
+      .hero__btns{ margin-top:22px; display:flex; gap:14px; flex-wrap:wrap; }
+      .hero__proof{
+        margin-top:18px;
+        display:flex; flex-wrap:wrap; gap:18px;
+        font-size:12px; color:#334155;
+      }
+      .proof{ display:flex; align-items:center; gap:8px; }
+      .proof i{ font-style:normal; }
+
+      .card{
+        background:var(--g4-card);
+        border:1px solid var(--g4-border);
+        border-radius:16px;
+        padding:18px;
+        box-shadow:0 16px 40px rgba(15,23,42,.08);
+      }
+      .card__top{ display:flex; align-items:center; gap:12px; }
+      .card__icon{
+        width:40px; height:40px; border-radius:12px;
+        background:rgba(124,58,237,.12);
+        display:grid; place-items:center;
+      }
+      .card__icon span{
+        width:18px; height:18px; border-radius:6px;
+        background:rgba(124,58,237,.35);
+        box-shadow: inset 0 0 0 2px rgba(124,58,237,.35);
+      }
+      .card__title{ font-size:16px; font-weight:700; margin:0; }
+      .card__text{ margin:10px 0 0; font-size:13px; color:#334155; line-height:1.45; }
+      .card__actions{ margin-top:14px; display:grid; gap:10px; }
+      .card__fine{ margin-top:10px; font-size:11px; color:#64748B; }
+
+      @media (max-width: 980px){
+        .hero__grid{ grid-template-columns:1fr; }
+        .hero__title{ font-size:44px; }
+      }
+      @media (max-width: 520px){
+        .hero{ padding:42px 0; }
+        .hero__title{ font-size:38px; }
+      }
+
+      /* SLIDER */
+      .slider{ position:relative; }
+      .track{
+        display:flex;
+        gap:16px;
+        overflow-x:auto;
+        scroll-snap-type:x mandatory;
+        scroll-behavior:smooth;
+        -webkit-overflow-scrolling:touch;
+        padding:6px 2px;
+      }
+      .track::-webkit-scrollbar{ height:10px; }
+      .track::-webkit-scrollbar-thumb{ background:rgba(15,23,42,.18); border-radius:999px; }
+
+      .slide{
+        flex:0 0 auto;
+        scroll-snap-align:start;
+      }
+
+      .fade-left,.fade-right{
+        pointer-events:none;
+        position:absolute; top:0; bottom:0;
+        width:56px; z-index:4;
+      }
+      .fade-left{ left:0; background:linear-gradient(to right, #fff, rgba(255,255,255,0)); }
+      .fade-right{ right:0; background:linear-gradient(to left, #fff, rgba(255,255,255,0)); }
+
+      .navbtn{
+        position:absolute; top:50%; transform:translateY(-50%);
+        width:42px; height:42px; border-radius:999px;
+        border:1px solid rgba(148,163,184,.6);
+        background:#fff;
+        box-shadow:0 10px 20px rgba(15,23,42,.08);
+        display:grid; place-items:center;
+        cursor:pointer;
+        z-index:5;
+      }
+      .navbtn--prev{ left:-10px; }
+      .navbtn--next{ right:-10px; }
+      .navbtn:hover{ filter:brightness(1.02); }
+      .navbtn:active{ transform:translateY(-50%) translateY(1px); }
+
+      /* Cards used inside sliders */
+      .program-card{
+        width:340px;
+        background:#fff;
+        border:1px solid rgba(214,225,242,.9);
+        border-radius:16px;
+        padding:18px;
+        box-shadow:0 12px 26px rgba(15,23,42,.06);
+      }
+      .program-card__head{
+        display:flex; align-items:center; gap:12px;
+        margin-bottom:10px;
+      }
+      .pill-icon{
+        width:40px; height:40px; border-radius:14px;
+        display:grid; place-items:center;
+        font-weight:800;
+      }
+      .program-card h3{ margin:0; font-size:16px; font-weight:700; }
+      .list{ margin:10px 0 0; padding:0; list-style:none; }
+      .list li{
+        display:flex; gap:10px; align-items:flex-start;
+        font-size:13px; color:#334155;
+        margin:8px 0;
+      }
+      .check{
+        width:18px; height:18px; border-radius:6px;
+        display:grid; place-items:center;
+        background:rgba(11,61,145,.10);
+        color:var(--g4-primary);
+        font-size:12px;
+        flex:0 0 auto;
+        margin-top:2px;
+      }
+
+      .team-card{
+        width:320px;
+        background:#fff;
+        border:1px solid rgba(214,225,242,.9);
+        border-radius:16px;
+        overflow:hidden;
+        box-shadow:0 12px 26px rgba(15,23,42,.06);
+      }
+      .team-card img{ width:100%; height:180px; object-fit:cover; display:block; }
+      .team-card__body{ padding:16px; }
+      .team-card__name{ margin:0; font-size:15px; font-weight:700; }
+      .team-card__role{ margin:4px 0 0; font-size:13px; color:#64748B; }
+      .team-card__meta{ margin-top:10px; display:grid; gap:8px; font-size:13px; }
+      .team-card__meta a{ color:#334155; text-decoration:none; font-weight:600; }
+      .team-card__meta a:hover{ color:#0F172A; }
+      .team-card__apply{ margin-top:12px; }
+
+      /* Footer */
+      .footer{
+        background:#0B1220;
+        color:#CBD5E1;
+        padding:32px 0;
+      }
+      .footer p{ margin:8px 0 0; font-size:12px; color:#94A3B8; }
+    </style>
+  </head>
+
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="container">
+        <div class="header__row">
+          <a class="brand" href="#home">
+            <div class="brand__logo">G4</div>
+            <div>
+              <div class="brand__name">G4 Mortgage</div>
+              <div class="brand__tag">Home loans made simple</div>
             </div>
-            <div className="text-xs text-slate-500">Home loans made simple</div>
-          </div>
-        </a>
+          </a>
 
-        <nav className="hidden items-center gap-6 md:flex">
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              go("home");
-              setTimeout(() => {
-                const el = document.getElementById("programs");
-                el?.scrollIntoView({ behavior: "smooth" });
-              }, 0);
-            }}
-            className={
-              "text-sm font-semibold hover:text-slate-900 " +
-              (page === "home" ? "text-slate-900" : "text-slate-700")
-            }
-          >
-            Loan Programs
-          </a>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              go("va");
-            }}
-            className={
-              "text-sm font-semibold hover:text-slate-900 " +
-              (page === "va" ? "text-slate-900" : "text-slate-700")
-            }
-          >
-            VA Loans
-          </a>
-          <a href={APPLY_URL} className="text-sm font-semibold text-slate-700 hover:text-slate-900">
-            Apply
-          </a>
-          <a href={INQUIRY_URL} className="text-sm font-semibold text-slate-700 hover:text-slate-900">
-            Inquiry
-          </a>
-        </nav>
+          <nav class="nav" aria-label="Primary">
+            <a href="#programs">Loan Programs</a>
+            <a href="#team">Your Team</a>
+            <a href="#contact">Contact</a>
+          </nav>
 
-        <div className="flex items-center gap-3">
-          <a
-            href={APPLY_URL}
-            className="hidden items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm md:inline-flex"
-            style={{ background: colors.primary }}
-          >
+          <a class="btn btn--primary" id="applyTop" href="#">
             Apply Now
           </a>
         </div>
       </div>
     </header>
-  );
-}
 
-function Footer() {
-  return (
-    <footer className="border-t border-slate-200 bg-slate-900 text-slate-200">
-      <div className="mx-auto max-w-7xl px-4 py-12">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+    <!-- Hero -->
+    <section class="hero" id="home">
+      <div class="container">
+        <div class="hero__grid">
           <div>
-            <div className="flex items-center gap-2">
-              <div
-                className="grid h-10 w-10 place-items-center rounded-xl text-sm font-bold text-white"
-                style={{ background: colors.primary }}
-              >
-                G4
-              </div>
-              <div>
-                <div className="text-sm font-bold text-white">G4 Mortgage</div>
-                <div className="text-xs text-slate-400">Home loans made simple</div>
-              </div>
-            </div>
-            <p className="mt-3 text-xs text-slate-400">
-              Fast responses, detailed files, and clean underwriting. Serving clients nationwide.
-            </p>
-          </div>
+            <div class="badge">49 States · Purchase • Refi • Investment</div>
 
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Resources</h4>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-white"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    go("home");
-                    setTimeout(() => {
-                      const el = document.getElementById("programs");
-                      el?.scrollIntoView({ behavior: "smooth" });
-                    }, 0);
-                  }}
-                >
-                  Loan programs
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-white"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    go("va");
-                  }}
-                >
-                  VA loans
-                </a>
-              </li>
-              <li>
-                <a href={ZILLOW_PROFILE_URL} className="hover:text-white" target="_blank" rel="noreferrer">
-                  Zillow profile
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Get started</h4>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li>
-                <a href={INQUIRY_URL} className="hover:text-white">
-                  Start inquiry
-                </a>
-              </li>
-              <li>
-                <a href={APPLY_URL} className="hover:text-white">
-                  Apply now
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contact us</h4>
-            <div className="mt-3 space-y-2 text-xs text-slate-200">
-              <p className="flex items-center gap-2">
-                <Phone className="h-4 w-4" /> (425) 750-1731
-              </p>
-              <p className="flex items-center gap-2">
-                <Mail className="h-4 w-4" /> jleslie@barrettfinancial.com
-              </p>
-              <p className="flex items-start gap-2">
-                <MapPin className="mt-0.5 h-4 w-4" />
-                <span>
-                  1120 Pacific Ave, Suite 205
-                  <br />
-                  Tacoma, WA 98402
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-10 border-t border-slate-800 pt-6 text-xs text-slate-400">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <p>© {new Date().getFullYear()} G4 Mortgage. All rights reserved.</p>
-            <p>Joe Leslie · Mortgage Loan Originator · NMLS# 1998387 · Equal Housing Opportunity</p>
-          </div>
-          <p className="mt-2">
-            This is not a commitment to lend. Information is subject to change. Rates and programs may vary based on credit,
-            income, property type, and other factors.
-          </p>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
-function HomePage() {
-  return (
-    <>
-      {/* Hero */}
-      <section id="home" className="relative overflow-hidden" style={{ background: colors.bg }}>
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 md:grid-cols-2 md:py-20">
-          <div>
-            <Badge>49 States · Purchase • Refi • Investment</Badge>
-            <h1 className="mt-4 text-3xl font-extrabold leading-tight md:text-5xl" style={{ color: colors.accent }}>
-              Clear Guidance.
-              <br className="hidden sm:block" /> Hands-on service.
+            <h1 class="hero__title">
+              Clear Guidance.<br />
+              Hands-on service.
             </h1>
-            <p className="mt-4 max-w-xl text-sm text-slate-700">
+
+            <p class="hero__sub">
               No public rate tables. Tell us your scenario and we’ll build options around your goals.
             </p>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <a
-                href={INQUIRY_URL}
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm"
-                style={{ background: colors.primary }}
-              >
-                Start Inquiry <ArrowRight className="h-4 w-4" />
+
+            <div class="hero__btns">
+              <a class="btn btn--primary" id="inquiryHero" href="#">
+                Start Inquiry <span>→</span>
               </a>
-              <a
-                href={APPLY_URL}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
-              >
-                Apply Now
-              </a>
+              <a class="btn btn--outline" id="applyHero" href="#">Apply Now</a>
             </div>
-            <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-slate-600">
-              <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4" style={{ color: "#16A34A" }} /> 500+ transactions
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Home className="h-4 w-4" style={{ color: "#0EA5E9" }} /> Purchase, Refi, Cash-out
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Building2 className="h-4 w-4" style={{ color: "#F59E0B" }} /> Primary • Second • Investment
-              </span>
+
+            <div class="hero__proof">
+              <div class="proof"><i>✅</i><span>500+ transactions</span></div>
+              <div class="proof"><i>🏠</i><span>Purchase, Refi, Cash-out</span></div>
+              <div class="proof"><i>🏢</i><span>Primary • Second • Investment</span></div>
             </div>
           </div>
 
           <div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl p-2" style={{ background: "rgba(124, 58, 237, 0.12)" }}>
-                  <Calculator className="h-6 w-6" style={{ color: "#7C3AED" }} />
-                </div>
-                <h3 className="text-lg font-semibold">Quick Scenario Request</h3>
+            <div class="card">
+              <div class="card__top">
+                <div class="card__icon"><span></span></div>
+                <h3 class="card__title">Quick Scenario Request</h3>
               </div>
-              <p className="mt-2 text-sm text-slate-700">
+
+              <div class="card__text">
                 Send a quick inquiry for custom options, or start the full application if you’re ready.
-              </p>
-              <div className="mt-4 grid grid-cols-1 gap-3">
-                <a
-                  href={INQUIRY_URL}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm"
-                  style={{ background: colors.primary }}
-                >
-                  Start Inquiry <ArrowRight className="h-4 w-4" />
+              </div>
+
+              <div class="card__actions">
+                <a class="btn btn--primary btn--full" id="inquiryCard" href="#">
+                  Start Inquiry <span>→</span>
                 </a>
-                <a
-                  href={APPLY_URL}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
-                >
+                <a class="btn btn--outline btn--full" id="applyCard" href="#">
                   Apply Now
                 </a>
               </div>
-              <p className="mt-3 text-xs text-slate-500">
+
+              <div class="card__fine">
                 Pricing depends on credit, LTV, property type, mortgage insurance, and more.
-              </p>
+              </div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      {/* Programs */}
-      <section id="programs" className="mx-auto max-w-7xl px-4 py-16">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <Badge>Loan Programs</Badge>
-            <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
-              Options for every borrower
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-700">
-              From first-time buyers to seasoned investors, we’ll match the right program for your goals.
-            </p>
-          </div>
-          <a
-            href="#contact"
-            className="hidden items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 md:inline-flex"
-          >
-            Speak with a specialist
-          </a>
-        </div>
-        <ProgramSlider />
-      </section>
+    <!-- Programs Slider -->
+    <section class="section" id="programs">
+      <div class="container">
+        <div class="badge">Loan Programs</div>
+        <h2 class="h2" style="margin-top:12px;">Options for every borrower</h2>
+        <p class="p">Click arrows to browse programs. Swipe on mobile.</p>
 
-      {/* Calculator */}
-      <section id="calculator" className="mx-auto max-w-7xl px-4 py-16">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <Badge>Mortgage Calculator</Badge>
-            <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
-              Estimate a payment, then get it dialed in
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-700">
-              Ballpark only—final numbers depend on taxes, insurance, HOA, MI, credit, and property details.
-            </p>
-          </div>
-          <a
-            href={INQUIRY_URL}
-            className="hidden items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 md:inline-flex"
-          >
-            Send my scenario
-          </a>
-        </div>
-        <PurchaseCalculator />
-      </section>
+        <div style="height:18px;"></div>
 
-      {/* Process */}
-      <section id="process" className="border-y border-slate-200" style={{ background: colors.bg }}>
-        <div className="mx-auto max-w-7xl px-4 py-16">
-          <Badge>How it works</Badge>
-          <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
-            Fast, transparent, accurate
-          </h2>
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Step n="1" title="Apply online" text="10–15 minutes. Secure portal. Upload docs as you go." />
-            <Step n="2" title="Custom options" text="We build scenarios around payment, cash-to-close, and speed." />
-            <Step n="3" title="Clear to close" text="We coordinate with title/escrow to close smoothly." />
-          </div>
-        </div>
-      </section>
+        <div class="slider">
+          <div class="fade-left"></div>
+          <div class="fade-right"></div>
 
-      {/* Team */}
-      <section id="team" className="mx-auto max-w-7xl px-4 py-16">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <Badge>Meet the Team</Badge>
-            <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
-              Your lending team
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-700">
-              Direct contact info on every card—call, email, or click Apply Now.
-            </p>
-          </div>
-          <a
-            href="#contact"
-            className="hidden items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 md:inline-flex"
-          >
-            Partner with us
-          </a>
-        </div>
-        <TeamSlider />
-      </section>
+          <button class="navbtn navbtn--prev" type="button" data-prev="programs" aria-label="Previous">←</button>
+          <button class="navbtn navbtn--next" type="button" data-next="programs" aria-label="Next">→</button>
 
-      {/* Reviews */}
-      <section id="reviews" className="border-y border-slate-200" style={{ background: colors.bg }}>
-        <div className="mx-auto max-w-7xl px-4 py-16">
-          <Badge>Reviews</Badge>
-          <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
-            Verified Zillow feedback
-          </h2>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <Star key={i} className="h-4 w-4" style={{ color: colors.primary }} />
-              ))}
-            </span>
-            <span className="text-sm text-slate-600">
-              {ZILLOW_RATING_AVG.toFixed(1)} average · {ZILLOW_REVIEW_COUNT}+ reviews
-            </span>
-            <a
-              href={ZILLOW_PROFILE_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-slate-700 hover:text-slate-900"
-            >
-              View on Zillow <ExternalLink className="h-4 w-4" />
-            </a>
-          </div>
-          <p className="mt-2 max-w-2xl text-sm text-slate-700">Reviews below are displayed via your Elfsight widget.</p>
-          <ReviewsWidget />
-        </div>
-      </section>
-
-      {/* Contact */}
-      <section id="contact" className="mx-auto max-w-7xl px-4 py-16">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div>
-            <Badge>Get in touch</Badge>
-            <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
-              Talk to a loan officer
-            </h2>
-            <p className="mt-2 max-w-xl text-sm text-slate-700">
-              Prefer a quick text/call? Or send an inquiry form with your scenario.
-            </p>
-
-            <div className="mt-4 space-y-2 text-sm text-slate-700">
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4" /> (425) 750-1731
-              </div>
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4" /> jleslie@barrettfinancial.com
-              </div>
-              <div className="flex items-start gap-2">
-                <MapPin className="mt-0.5 h-4 w-4" />
-                <span>
-                  1120 Pacific Ave, Suite 205
-                  <br />
-                  Tacoma, WA 98402
-                </span>
+          <div class="track" data-track="programs">
+            <!-- PROGRAM SLIDES -->
+            <div class="slide">
+              <div class="program-card">
+                <div class="program-card__head">
+                  <div class="pill-icon" style="background:rgba(11,61,145,.10); color:var(--g4-primary);">🏠</div>
+                  <h3>Conventional 3%+ down</h3>
+                </div>
+                <ul class="list">
+                  <li><span class="check">✓</span><span>Great for strong credit</span></li>
+                  <li><span class="check">✓</span><span>Low MI options</span></li>
+                  <li><span class="check">✓</span><span>Fixed & ARMs</span></li>
+                </ul>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              <a
-                href={APPLY_URL}
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
-                style={{ background: colors.primary }}
-              >
-                Apply Now <ArrowRight className="h-4 w-4" />
-              </a>
-              <a
-                href={INQUIRY_URL}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
-              >
-                Start Inquiry
-              </a>
+            <div class="slide">
+              <div class="program-card">
+                <div class="program-card__head">
+                  <div class="pill-icon" style="background:rgba(22,163,74,.12); color:#16A34A;">🛡️</div>
+                  <h3>FHA 3.5% down</h3>
+                </div>
+                <ul class="list">
+                  <li><span class="check">✓</span><span>Flexible credit & DTI</span></li>
+                  <li><span class="check">✓</span><span>Assumable loans</span></li>
+                  <li><span class="check">✓</span><span>Streamline refi</span></li>
+                </ul>
+              </div>
             </div>
 
-            <p className="mt-4 text-xs text-slate-500">
-              Not a commitment to lend. All loans subject to credit and underwriting approval.
-            </p>
+            <div class="slide">
+              <div class="program-card">
+                <div class="program-card__head">
+                  <div class="pill-icon" style="background:rgba(14,165,233,.12); color:#0EA5E9;">🇺🇸</div>
+                  <h3>VA 0% down</h3>
+                </div>
+                <ul class="list">
+                  <li><span class="check">✓</span><span>No monthly mortgage insurance</span></li>
+                  <li><span class="check">✓</span><span>Flexible guidelines</span></li>
+                  <li><span class="check">✓</span><span>Assumable</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="slide">
+              <div class="program-card">
+                <div class="program-card__head">
+                  <div class="pill-icon" style="background:rgba(34,197,94,.12); color:#22C55E;">🌲</div>
+                  <h3>USDA 0% down</h3>
+                </div>
+                <ul class="list">
+                  <li><span class="check">✓</span><span>Rural properties</span></li>
+                  <li><span class="check">✓</span><span>Income caps</span></li>
+                  <li><span class="check">✓</span><span>Great for first-time buyers</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="slide">
+              <div class="program-card">
+                <div class="program-card__head">
+                  <div class="pill-icon" style="background:rgba(124,58,237,.12); color:#7C3AED;">💎</div>
+                  <h3>Jumbo</h3>
+                </div>
+                <ul class="list">
+                  <li><span class="check">✓</span><span>High loan amounts</span></li>
+                  <li><span class="check">✓</span><span>Competitive pricing</span></li>
+                  <li><span class="check">✓</span><span>Alt-doc options</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="slide">
+              <div class="program-card">
+                <div class="program-card__head">
+                  <div class="pill-icon" style="background:rgba(245,158,11,.16); color:#F59E0B;">🏢</div>
+                  <h3>Investor / DSCR</h3>
+                </div>
+                <ul class="list">
+                  <li><span class="check">✓</span><span>Qualify on rent</span></li>
+                  <li><span class="check">✓</span><span>Short & long-term rentals</span></li>
+                  <li><span class="check">✓</span><span>LLC-friendly</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="slide">
+              <div class="program-card">
+                <div class="program-card__head">
+                  <div class="pill-icon" style="background:rgba(13,148,136,.12); color:#0D9488;">📄</div>
+                  <h3>Bank Statement</h3>
+                </div>
+                <ul class="list">
+                  <li><span class="check">✓</span><span>12–24 mo statements</span></li>
+                  <li><span class="check">✓</span><span>Self-employed friendly</span></li>
+                  <li><span class="check">✓</span><span>No tax returns in many cases</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="slide">
+              <div class="program-card">
+                <div class="program-card__head">
+                  <div class="pill-icon" style="background:rgba(225,29,72,.10); color:#E11D48;">🧾</div>
+                  <h3>ITIN</h3>
+                </div>
+                <ul class="list">
+                  <li><span class="check">✓</span><span>Flexible documentation</span></li>
+                  <li><span class="check">✓</span><span>Purchase & refi</span></li>
+                  <li><span class="check">✓</span><span>Fixed & ARM options</span></li>
+                </ul>
+              </div>
+            </div>
+            <!-- END PROGRAM SLIDES -->
           </div>
-
-          <ContactForm />
         </div>
-      </section>
-    </>
-  );
-}
+      </div>
+    </section>
 
-function VALoansPage() {
-  return (
-    <>
-      <section style={{ background: colors.bg }} className="border-b border-slate-200">
-        <div className="mx-auto max-w-7xl px-4 py-14">
-          <Badge>VA Loans</Badge>
-          <h1 className="mt-3 text-3xl font-extrabold md:text-5xl" style={{ color: colors.accent }}>
-            VA Purchase &amp; VA Refinance Options
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm text-slate-700">
-            Built for eligible veterans and service members. We’ll help you choose the right VA option and handle the file end-to-end.
+    <!-- Team Slider -->
+    <section class="section section--soft" id="team">
+      <div class="container">
+        <div class="badge">Meet the Team</div>
+        <h2 class="h2" style="margin-top:12px;">Your lending team</h2>
+        <p class="p">Click arrows to browse. Each card has contact + Apply.</p>
+
+        <div style="height:18px;"></div>
+
+        <div class="slider">
+          <div class="fade-left" style="background:linear-gradient(to right, var(--g4-bg), rgba(238,244,255,0));"></div>
+          <div class="fade-right" style="background:linear-gradient(to left, var(--g4-bg), rgba(238,244,255,0));"></div>
+
+          <button class="navbtn navbtn--prev" type="button" data-prev="team" aria-label="Previous">←</button>
+          <button class="navbtn navbtn--next" type="button" data-next="team" aria-label="Next">→</button>
+
+          <div class="track" data-track="team">
+            <!-- TEAM SLIDES -->
+            <div class="slide">
+              <div class="team-card">
+                <img src="https://images.unsplash.com/photo-1603415526960-f7e0328c63b1?q=80&w=1280&auto=format&fit=crop" alt="Joe Leslie" />
+                <div class="team-card__body">
+                  <p class="team-card__name">Joe Leslie</p>
+                  <p class="team-card__role">Mortgage Loan Originator</p>
+                  <div class="team-card__meta">
+                    <a href="tel:+14257501731">📞 (425) 750-1731</a>
+                    <a href="mailto:jleslie@barrettfinancial.com">✉️ jleslie@barrettfinancial.com</a>
+                  </div>
+                  <div class="team-card__apply">
+                    <a class="btn btn--primary btn--full" href="#" data-apply>Apply Now</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="slide">
+              <div class="team-card">
+                <img src="https://images.unsplash.com/photo-1502685104226-ee32379fefbe?q=80&w=1280&auto=format&fit=crop" alt="JD Thueringer" />
+                <div class="team-card__body">
+                  <p class="team-card__name">JD Thueringer</p>
+                  <p class="team-card__role">Loan Officer</p>
+                  <div class="team-card__meta">
+                    <a href="tel:+14255550201">📞 (425) 555-0201</a>
+                    <a href="mailto:jd@g4mortgage.com">✉️ jd@g4mortgage.com</a>
+                  </div>
+                  <div class="team-card__apply">
+                    <a class="btn btn--primary btn--full" href="#" data-apply>Apply Now</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="slide">
+              <div class="team-card">
+                <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1280&auto=format&fit=crop" alt="Jack Sullivan" />
+                <div class="team-card__body">
+                  <p class="team-card__name">Jack Sullivan</p>
+                  <p class="team-card__role">Loan Officer</p>
+                  <div class="team-card__meta">
+                    <a href="tel:+14255550202">📞 (425) 555-0202</a>
+                    <a href="mailto:jack@g4mortgage.com">✉️ jack@g4mortgage.com</a>
+                  </div>
+                  <div class="team-card__apply">
+                    <a class="btn btn--primary btn--full" href="#" data-apply>Apply Now</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="slide">
+              <div class="team-card">
+                <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1280&auto=format&fit=crop" alt="Monica Alfieri" />
+                <div class="team-card__body">
+                  <p class="team-card__name">Monica Alfieri</p>
+                  <p class="team-card__role">Client Experience</p>
+                  <div class="team-card__meta">
+                    <a href="tel:+14255550203">📞 (425) 555-0203</a>
+                    <a href="mailto:monica@g4mortgage.com">✉️ monica@g4mortgage.com</a>
+                  </div>
+                  <div class="team-card__apply">
+                    <a class="btn btn--primary btn--full" href="#" data-apply>Apply Now</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- END TEAM SLIDES -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact (simple) -->
+    <section class="section" id="contact">
+      <div class="container">
+        <div class="badge">Get in touch</div>
+        <h2 class="h2" style="margin-top:12px;">Talk to a loan officer</h2>
+        <p class="p">Use the buttons above, or contact us directly.</p>
+
+        <div style="height:14px;"></div>
+
+        <div class="card" style="max-width:720px;">
+          <p style="margin:0; font-weight:700;">Contact</p>
+          <p style="margin:10px 0 0; font-size:14px; color:#334155;">📞 (425) 750-1731</p>
+          <p style="margin:6px 0 0; font-size:14px; color:#334155;">✉️ jleslie@barrettfinancial.com</p>
+          <div style="height:14px;"></div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <a class="btn btn--primary" id="inquiryContact" href="#">Start Inquiry →</a>
+            <a class="btn btn--outline" id="applyContact" href="#">Apply Now</a>
+          </div>
+          <p style="margin:14px 0 0; font-size:12px; color:#64748B;">
+            By contacting us, you agree we may reach out by phone, text, or email. Not a commitment to lend.
           </p>
+        </div>
+      </div>
+    </section>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              href={INQUIRY_URL}
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
-              style={{ background: colors.primary }}
-            >
-              Start VA Inquiry <ArrowRight className="h-4 w-4" />
-            </a>
-            <a
-              href={APPLY_URL}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
-            >
-              Apply Now
-            </a>
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                go("home");
-              }}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
-            >
-              Back to Home
-            </a>
+    <footer class="footer">
+      <div class="container">
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <div class="brand__logo" style="width:42px;height:42px;border-radius:14px;">G4</div>
+          <div>
+            <div style="font-weight:800; color:#E2E8F0;">G4 Mortgage</div>
+            <p style="margin:2px 0 0;">Joe Leslie · Mortgage Loan Originator · NMLS# 1998387 · Equal Housing Opportunity</p>
           </div>
         </div>
-      </section>
+        <p>
+          This is not a commitment to lend. Rates and programs may vary based on credit, income, property type, and other factors.
+        </p>
+      </div>
+    </footer>
 
-      <section className="mx-auto max-w-7xl px-4 py-14">
-        <div className="mb-4">
-          <Badge>VA Programs</Badge>
-          <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
-            Choose the right VA path
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm text-slate-700">Here’s a clean breakdown of the VA options you asked for.</p>
-        </div>
+    <script>
+      // ✅ Your real links (already filled in from your project)
+      const APPLY_URL = "https://181106.my1003app.com/1998387/register?time=1721681398525";
+      const INQUIRY_URL = "https://181106.my1003app.com/1998387/inquiry?time=1725987208470";
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <ProgramCard
-            icon={BadgeCheck}
-            title="VA IRRRL (Streamline Refi)"
-            points={[
-              "Fast refi for existing VA loans",
-              "Often reduced documentation vs full refi",
-              "Designed to lower rate/payment or move to fixed",
-            ]}
-            color="#0EA5E9"
-            tint="rgba(14, 165, 233, 0.10)"
-          />
-          <ProgramCard
-            icon={ShieldCheck}
-            title="VA Type 1 Refinance"
-            points={[
-              "Great when you have a VA loan and need more flexibility",
-              "Can be used to change term or structure",
-              "Scenario-based: we’ll advise best path",
-            ]}
-            color="#16A34A"
-            tint="rgba(22, 163, 74, 0.10)"
-          />
-          <ProgramCard
-            icon={ShieldCheck}
-            title="VA Type 2 Refinance"
-            points={[
-              "For more complex refinance goals",
-              "Potentially cash-out / consolidation scenarios",
-              "We’ll map it to entitlement, value, and credit",
-            ]}
-            color="#7C3AED"
-            tint="rgba(124, 58, 237, 0.10)"
-          />
-          <ProgramCard
-            icon={Home}
-            title="VA Purchase"
-            points={["0% down for eligible buyers", "No monthly mortgage insurance", "Strong option for primary residence purchases"]}
-            color="#0B3D91"
-            tint="rgba(11, 61, 145, 0.10)"
-          />
-        </div>
-      </section>
+      // Wire main buttons
+      const setHref = (id, url) => {
+        const el = document.getElementById(id);
+        if (el) el.setAttribute("href", url);
+      };
+      ["applyTop","applyHero","applyCard","applyContact"].forEach(id => setHref(id, APPLY_URL));
+      ["inquiryHero","inquiryCard","inquiryContact"].forEach(id => setHref(id, INQUIRY_URL));
 
-      <section className="border-y border-slate-200" style={{ background: colors.bg }}>
-        <div className="mx-auto max-w-7xl px-4 py-14">
-          <div className="mb-4">
-            <Badge>VA Refinance Calculator</Badge>
-            <h2 className="mt-3 text-2xl font-extrabold md:text-3xl" style={{ color: colors.accent }}>
-              Refinance estimate (default 5.625%)
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-700">
-              Principal &amp; interest estimate for refinance (not purchase). You can edit the rate.
-            </p>
-          </div>
-          <RefiCalculator defaultRate={5.625} />
-        </div>
-      </section>
+      // Wire all "Apply Now" inside team cards
+      document.querySelectorAll("[data-apply]").forEach(a => a.setAttribute("href", APPLY_URL));
 
-      <section className="mx-auto max-w-7xl px-4 py-14">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl p-2" style={{ background: "rgba(245, 158, 11, 0.10)" }}>
-              <ShieldCheck className="h-6 w-6" style={{ color: "#F59E0B" }} />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900">Ready for a VA quote?</h3>
-          </div>
-          <p className="mt-2 text-sm text-slate-700">
-            Send your scenario and we’ll confirm eligibility and build the cleanest path (IRRRL vs Type 1/2 vs Purchase).
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <a
-              href={INQUIRY_URL}
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
-              style={{ background: colors.primary }}
-            >
-              Start VA Inquiry <ArrowRight className="h-4 w-4" />
-            </a>
-            <a
-              href={APPLY_URL}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
-            >
-              Apply Now
-            </a>
-          </div>
-          <p className="mt-3 text-xs text-slate-500">Not a commitment to lend. All loans subject to credit and underwriting approval.</p>
-        </div>
-      </section>
-    </>
-  );
-}
+      // Slider logic (works on Vercel, single-file)
+      function initSlider(key) {
+        const track = document.querySelector(`[data-track="${key}"]`);
+        const prev = document.querySelector(`[data-prev="${key}"]`);
+        const next = document.querySelector(`[data-next="${key}"]`);
+        if (!track) return;
 
-// Basic sanity tests (safe in browser; no-op if console is missing)
-(function runSanityTests() {
-  try {
-    const a = calcMonthlyPI(300000, 6, 30);
-    const b = calcMonthlyPI(300000, 0, 30);
-    const c = calcMonthlyPI(420000, 5.625, 30);
-    console.assert(Number.isFinite(a) && a > 0, "calcMonthlyPI should be positive");
-    console.assert(Math.abs(b - 833.3333) < 2, "0% should be loan/n");
-    console.assert(calcMonthlyPI(0, 6, 30) === 0, "0 loan should be 0");
-    console.assert(Number.isFinite(c) && c > 0, "VA refi PI should be positive");
+        const scrollByCard = (dir) => {
+          const first = track.querySelector(".slide");
+          const gap = 16;
+          const w = first ? first.getBoundingClientRect().width : 320;
+          track.scrollBy({ left: dir * (w + gap) * 1.15, behavior: "smooth" });
+        };
 
-    // Additional tests (added)
-    console.assert(calcMonthlyPI(100000, 6, 0) === 0, "0 years should be 0");
-    console.assert(calcMonthlyPI(-100000, 6, 30) === 0, "negative loan should be 0");
-    const d = calcMonthlyPI(100000, 120, 30);
-    console.assert(Number.isFinite(d) && d > 0, "high rate should still compute");
-  } catch {
-    // ignore
-  }
-})();
+        prev && prev.addEventListener("click", () => scrollByCard(-1));
+        next && next.addEventListener("click", () => scrollByCard(1));
+      }
 
-export default function MortgageSite() {
-  const [page, setPage] = useState<Page>("home");
-
-  useEffect(() => {
-    const sync = () => setPage(currentPageFromHash());
-    sync();
-    window.addEventListener("hashchange", sync);
-    return () => window.removeEventListener("hashchange", sync);
-  }, []);
-
-  return (
-    <div className="min-h-screen bg-white font-sans text-slate-900">
-      <SiteHeader page={page} />
-      {page === "va" ? <VALoansPage /> : <HomePage />}
-      <Footer />
-    </div>
-  );
-}
+      document.addEventListener("DOMContentLoaded", () => {
+        initSlider("programs");
+        initSlider("team");
+      });
+    </script>
+  </body>
+</html>
